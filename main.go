@@ -7,31 +7,28 @@ import (
 
 	"time"
 
+	handler "github.com/go-rest-api/handlers"
+	helper "github.com/go-rest-api/helper"
 	model "github.com/go-rest-api/models"
+	utils "github.com/go-rest-api/utils"
+
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var client *mongo.Client
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	// enter your mongoDB password
-	password := ""
-	client, _ = mongo.Connect(ctx, options.Client().ApplyURI(
-		"mongodb+srv://samvit:"+password+"@test.cmlur.mongodb.net/?retryWrites=true&w=majority",
-	))
-	defer client.Disconnect(ctx)
+	client = utils.ConnectDB()
+	defer utils.DisconnectDB()
 	router := mux.NewRouter()
+	router.HandleFunc("/login", handler.LoginHandler).Methods("POST")
+	router.HandleFunc("/signup", handler.SignUpHandler).Methods("POST")
 	router.HandleFunc("/movie", AddMovieEndpoint).Methods("POST")
 	router.HandleFunc("/movies", GetMovieEndpoint).Methods("GET")
-
 	http.ListenAndServe(":8080", router)
-
 }
 
 // AddMovieEndpoint -> to add movie to DB
@@ -49,6 +46,12 @@ func AddMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 // GetMovieEndpoint -> to get one or all movies from DB
 func GetMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 
+	isAuthenticated, authStatus, _ := helper.CheckAuth(request)
+	if isAuthenticated == false {
+		response.WriteHeader(http.StatusUnauthorized)
+		response.Write([]byte(`{"message": "` + authStatus + `"}`))
+		return
+	}
 	response.Header().Add("content-type", "application/json")
 	movieCollection := client.Database("test_db").Collection("movies")
 	requestedID := request.FormValue("id")
@@ -81,9 +84,8 @@ func GetMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 			response.WriteHeader(http.StatusInternalServerError)
 			response.Write([]byte(`{"message": "` + err.Error() + `"}`))
 			return
-		} else {
-			json.NewEncoder(response).Encode(movies)
 		}
+		json.NewEncoder(response).Encode(movies)
 	}
 
 }
