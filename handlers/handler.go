@@ -38,7 +38,7 @@ func LoginHandler(response http.ResponseWriter, request *http.Request) {
 		response.Write([]byte(`{"message": "Unauthorized Access !!"}`))
 		return
 	}
-	expirationTime := time.Now().Add(time.Second * 40)
+	expirationTime := time.Now().Add(time.Minute * 5)
 	claims := &model.Claims{
 		Username: credentials.Username,
 		StandardClaims: jwt.StandardClaims{
@@ -54,6 +54,17 @@ func LoginHandler(response http.ResponseWriter, request *http.Request) {
 			Expires: expirationTime,
 		})
 	response.Write([]byte(`{"message": "Successfully logged in"}`))
+}
+
+// LogOutHandler ->
+func LogOutHandler(response http.ResponseWriter, request *http.Request) {
+	http.SetCookie(response,
+		&http.Cookie{
+			Name:    "token",
+			Value:   "",
+			Expires: time.Unix(0, 0),
+		})
+	response.Write([]byte(`{"message": "Successfully logged out !!"}`))
 }
 
 // SignUpHandler ->
