@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"sort"
+	"strconv"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -40,7 +42,7 @@ func LoginHandler(response http.ResponseWriter, request *http.Request) {
 		response.Write([]byte(`{"message": "Unauthorized Access !!"}`))
 		return
 	}
-	expirationTime := time.Now().Add(time.Minute * 5)
+	expirationTime := time.Now().Add(time.Minute * 10)
 	claims := &model.Claims{
 		Username: credentials.Username,
 		StandardClaims: jwt.StandardClaims{
@@ -180,15 +182,20 @@ func GetMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 	response.Header().Add("content-type", "application/json")
 	movieCollection := client.Database("test_db").Collection("movies")
 	allIDs := request.URL.Query()["id"]
+	sortBy := request.FormValue("sortBy")
+	sortOrder := request.FormValue("sortOrder")
+	filter := request.FormValue("filter")
+	min := request.FormValue("min")
+	max := request.FormValue("max")
 	var movies []model.Movie
+
 	if len(allIDs) > 0 {
-		var slice = make([]primitive.ObjectID, len(allIDs))
+		var objectIDs = make([]primitive.ObjectID, len(allIDs))
 		for i := 0; i < len(allIDs); i++ {
 			id, _ := primitive.ObjectIDFromHex(allIDs[i])
-			slice = append(slice, id)
+			objectIDs[i] = id
 		}
-		output := slice[len(allIDs):]
-		query := bson.M{"_id": bson.M{"$in": output}}
+		query := bson.M{"_id": bson.M{"$in": objectIDs}}
 		result, err := movieCollection.Find(ctx, query)
 		if err != nil {
 			response.WriteHeader(http.StatusInternalServerError)
@@ -205,8 +212,6 @@ func GetMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 			response.Write([]byte(`{"message": "` + err.Error() + `"}`))
 			return
 		}
-		json.NewEncoder(response).Encode(movies)
-
 	} else {
 		cursor, err := movieCollection.Find(ctx, bson.M{})
 		if err != nil {
@@ -224,7 +229,77 @@ func GetMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 			response.Write([]byte(`{"message": "` + err.Error() + `"}`))
 			return
 		}
-		json.NewEncoder(response).Encode(movies)
 	}
+	var filteredResults = make([]model.Movie, 0)
 
+	if filter == "rating" || filter == "year" {
+		var minRating float64
+		var maxRating float64
+		var minYear int
+		var maxYear int
+		if filter == "rating" {
+			if min == "" {
+				minRating = 0.0
+			} else {
+				minRating, _ = strconv.ParseFloat(min, 64)
+			}
+			if max == "" {
+				maxRating = 10.0
+			} else {
+				maxRating, _ = strconv.ParseFloat(max, 64)
+			}
+		} else {
+			if min == "" {
+				minYear = 1800
+			} else {
+				minYear, _ = strconv.Atoi(min)
+			}
+			if max == "" {
+				maxYear = time.Now().Year()
+			} else {
+				maxYear, _ = strconv.Atoi(max)
+			}
+		}
+
+		for i := 0; i < len(movies); i++ {
+			if filter == "rating" {
+				if movies[i].ImdbRating >= minRating && movies[i].ImdbRating <= maxRating {
+					filteredResults = append(filteredResults, movies[i])
+				}
+			} else {
+				if movies[i].Year >= minYear && movies[i].Year <= maxYear {
+					filteredResults = append(filteredResults, movies[i])
+				}
+			}
+		}
+	}
+	if len(filteredResults) == 0 {
+		for i := 0; i < len(movies); i++ {
+			filteredResults = append(filteredResults, movies[i])
+		}
+	}
+	if sortBy == "rating" || sortBy == "year" {
+		if sortOrder == "ascending" {
+			if sortBy == "rating" {
+				sort.Slice(filteredResults, func(i, j int) bool {
+					return filteredResults[i].ImdbRating < filteredResults[j].ImdbRating
+				})
+			} else {
+				sort.Slice(filteredResults, func(i, j int) bool {
+					return filteredResults[i].Year < filteredResults[j].Year
+				})
+			}
+		} else if sortOrder == "descending" || sortOrder == "" {
+			if sortBy == "rating" {
+				sort.Slice(filteredResults, func(i, j int) bool {
+					return filteredResults[i].ImdbRating > filteredResults[j].ImdbRating
+				})
+			} else {
+				sort.Slice(filteredResults, func(i, j int) bool {
+					return filteredResults[i].Year > filteredResults[j].Year
+				})
+			}
+		}
+	}
+	json.NewEncoder(response).Encode(filteredResults)
 }
