@@ -35,11 +35,16 @@ func LoginHandler(response http.ResponseWriter, request *http.Request) {
 	userCollection := client.Database("test_db").Collection("users")
 	result := userCollection.FindOne(ctx, bson.M{"username": credentials.Username}).Decode(&expextedCredentials)
 	if result != nil {
-		response.WriteHeader(http.StatusInternalServerError)
+		response.Header().Add("content-type", "application/json")
+		errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusInternalServerError, Message: "No user found :-("})
+		response.WriteHeader(http.StatusUnauthorized)
+		response.Write(errorResponse)
 	}
 	if credentials.Password != expextedCredentials.Password {
+		response.Header().Add("content-type", "application/json")
+		errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusUnauthorized, Message: "UnAuthorized Acess :-("})
 		response.WriteHeader(http.StatusUnauthorized)
-		response.Write([]byte(`{"message": "Unauthorized Access !!"}`))
+		response.Write(errorResponse)
 		return
 	}
 	expirationTime := time.Now().Add(time.Minute * 10)
@@ -56,7 +61,10 @@ func LoginHandler(response http.ResponseWriter, request *http.Request) {
 			Value:   tokenString,
 			Expires: expirationTime,
 		})
-	response.Write([]byte(`{"message": "Successfully logged in"}`))
+	response.Header().Add("content-type", "application/json")
+	successResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusOK, Message: "Logged in successfully :-) "})
+	response.WriteHeader(http.StatusOK)
+	response.Write(successResponse)
 }
 
 // LogOutHandler ->
@@ -67,7 +75,11 @@ func LogOutHandler(response http.ResponseWriter, request *http.Request) {
 			Value:   "",
 			Expires: time.Unix(0, 0),
 		})
-	response.Write([]byte(`{"message": "Successfully logged out !!"}`))
+
+	response.Header().Add("content-type", "application/json")
+	successResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusOK, Message: "Logged in successfully :-) "})
+	response.WriteHeader(http.StatusOK)
+	response.Write(successResponse)
 }
 
 // SignUpHandler ->
@@ -87,6 +99,7 @@ func SignUpHandler(response http.ResponseWriter, request *http.Request) {
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)
 	}
+	response.Header().Add("content-type", "application/json")
 	json.NewEncoder(response).Encode(result)
 }
 
@@ -94,8 +107,10 @@ func SignUpHandler(response http.ResponseWriter, request *http.Request) {
 func AddMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 	isAuthenticated, authStatus, _ := helper.CheckAuth(request)
 	if isAuthenticated == false {
+		response.Header().Add("content-type", "application/json")
+		errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusUnauthorized, Message: authStatus})
 		response.WriteHeader(http.StatusUnauthorized)
-		response.Write([]byte(`{"message": "` + authStatus + `"}`))
+		response.Write(errorResponse)
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -115,8 +130,10 @@ func AddMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 func DeleteMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 	isAuthenticated, authStatus, _ := helper.CheckAuth(request)
 	if isAuthenticated == false {
+		response.Header().Add("content-type", "application/json")
+		errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusUnauthorized, Message: authStatus})
 		response.WriteHeader(http.StatusUnauthorized)
-		response.Write([]byte(`{"message": "` + authStatus + `"}`))
+		response.Write(errorResponse)
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -141,8 +158,10 @@ func DeleteMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 func UpdateMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 	isAuthenticated, authStatus, _ := helper.CheckAuth(request)
 	if isAuthenticated == false {
+		response.Header().Add("content-type", "application/json")
+		errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusUnauthorized, Message: authStatus})
 		response.WriteHeader(http.StatusUnauthorized)
-		response.Write([]byte(`{"message": "` + authStatus + `"}`))
+		response.Write(errorResponse)
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -171,8 +190,10 @@ func UpdateMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 func GetMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 	isAuthenticated, authStatus, _ := helper.CheckAuth(request)
 	if isAuthenticated == false {
+		response.Header().Add("content-type", "application/json")
+		errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusUnauthorized, Message: authStatus})
 		response.WriteHeader(http.StatusUnauthorized)
-		response.Write([]byte(`{"message": "` + authStatus + `"}`))
+		response.Write(errorResponse)
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -199,7 +220,10 @@ func GetMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 		result, err := movieCollection.Find(ctx, query)
 		if err != nil {
 			response.WriteHeader(http.StatusInternalServerError)
-			response.Write([]byte(`{"message": "` + err.Error() + `"}`))
+			response.Header().Add("content-type", "application/json")
+			errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusInternalServerError, Message: "Internal Server Error :-)"})
+			response.Write(errorResponse)
+			return
 		}
 		defer result.Close(ctx)
 		for result.Next(ctx) {
@@ -209,14 +233,19 @@ func GetMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 		}
 		if err := result.Err(); err != nil {
 			response.WriteHeader(http.StatusInternalServerError)
-			response.Write([]byte(`{"message": "` + err.Error() + `"}`))
+			response.Header().Add("content-type", "application/json")
+			errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusInternalServerError, Message: "Internal Server Error :-)"})
+			response.Write(errorResponse)
 			return
 		}
 	} else {
 		cursor, err := movieCollection.Find(ctx, bson.M{})
 		if err != nil {
 			response.WriteHeader(http.StatusInternalServerError)
-			response.Write([]byte(`{"message": "` + err.Error() + `"}`))
+			response.Header().Add("content-type", "application/json")
+			errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusInternalServerError, Message: "Internal Server Error :-)"})
+			response.Write(errorResponse)
+			return
 		}
 		defer cursor.Close(ctx)
 		for cursor.Next(ctx) {
@@ -226,7 +255,9 @@ func GetMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 		}
 		if err := cursor.Err(); err != nil {
 			response.WriteHeader(http.StatusInternalServerError)
-			response.Write([]byte(`{"message": "` + err.Error() + `"}`))
+			response.Header().Add("content-type", "application/json")
+			errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusInternalServerError, Message: "Internal Server Error :-)"})
+			response.Write(errorResponse)
 			return
 		}
 	}

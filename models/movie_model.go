@@ -12,3 +12,9 @@ type Movie struct {
 	ImdbRating    float64            `json:"imdbRating,omitempty" bson:"imdbRating,omitempty"`
 	PosterURL     string             `json:"posterurl,omitempty" bson:"posterurl,omitempty"`
 }
+
+//ErrorResponse -> for displayin errors
+type ErrorResponse struct {
+	Code    int    `json:"code,omitempty"`
+	Message string `json:"message,omitempty"`
+}

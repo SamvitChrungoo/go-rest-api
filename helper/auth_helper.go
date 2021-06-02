@@ -12,9 +12,9 @@ func CheckAuth(request *http.Request) (bool, string, *model.Claims) {
 	cookie, err := request.Cookie("token")
 	if err != nil {
 		if err == http.ErrNoCookie {
-			return false, "StatusUnauthorized", &model.Claims{}
+			return false, "Unauthorized Access :( ", &model.Claims{}
 		}
-		return false, "StatusBadRequest", &model.Claims{}
+		return false, "Bad Request !!", &model.Claims{}
 	}
 
 	tokenStr := cookie.Value
@@ -26,12 +26,12 @@ func CheckAuth(request *http.Request) (bool, string, *model.Claims) {
 
 	if err != nil {
 		if err == jwt.ErrSignatureInvalid {
-			return false, "StatusUnauthorized", &model.Claims{}
+			return false, "Unauthorized Access :( ", &model.Claims{}
 		}
-		return false, "StatusUnauthorized", &model.Claims{}
+		return false, "Unauthorized Access :( ", &model.Claims{}
 	}
 	if !tkn.Valid {
-		return false, "StatusUnauthorized", &model.Claims{}
+		return false, "Unauthorized Access :( ", &model.Claims{}
 	}
 	return true, "Success", claims
 }
