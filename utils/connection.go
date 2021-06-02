@@ -12,7 +12,7 @@ import (
 func ConnectDB() *mongo.Client {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	password := "samvit123"
+	password := GetEnvironmentVariable("DB_PASSWORD")
 	client, _ := mongo.Connect(ctx, options.Client().ApplyURI(
 		"mongodb+srv://samvit:"+password+"@test.cmlur.mongodb.net/?retryWrites=true&w=majority"))
 	return client

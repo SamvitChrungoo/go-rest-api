@@ -4,11 +4,13 @@ import (
 	"net/http"
 
 	handler "github.com/go-rest-api/handlers"
+	utils "github.com/go-rest-api/utils"
 
 	"github.com/gorilla/mux"
 )
 
 func main() {
+	utils.SetEnvironmentVariables()
 	router := mux.NewRouter()
 	router.HandleFunc("/login", handler.LoginHandler).Methods("POST")
 	router.HandleFunc("/logout", handler.LogOutHandler).Methods("GET")
@@ -17,5 +19,6 @@ func main() {
 	router.HandleFunc("/movie", handler.UpdateMovieEndpoint).Methods("PUT")
 	router.HandleFunc("/movie", handler.DeleteMovieEndpoint).Methods("DELETE")
 	router.HandleFunc("/movies", handler.GetMovieEndpoint).Methods("GET")
-	http.ListenAndServe(":8080", router)
+	portNo := utils.GetEnvironmentVariable("PORT_NO")
+	http.ListenAndServe(":"+portNo, router)
 }

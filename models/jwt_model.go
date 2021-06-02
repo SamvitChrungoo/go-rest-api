@@ -1,9 +1,12 @@
 package model
 
-import "github.com/dgrijalva/jwt-go"
+import (
+	"github.com/dgrijalva/jwt-go"
+	"github.com/go-rest-api/utils"
+)
 
 //JwtKey -> secret key
-var JwtKey = []byte("super_secret_phrase_key")
+var JwtKey = []byte(utils.GetEnvironmentVariable("JWT_SECRET_PHASE"))
 
 // Credentials ->
 type Credentials struct {

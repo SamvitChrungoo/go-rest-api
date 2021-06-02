@@ -32,7 +32,7 @@ func LoginHandler(response http.ResponseWriter, request *http.Request) {
 	defer cancel()
 	client = utils.ConnectDB()
 	defer client.Disconnect(ctx)
-	userCollection := client.Database("test_db").Collection("users")
+	userCollection := client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("users")
 	result := userCollection.FindOne(ctx, bson.M{"username": credentials.Username}).Decode(&expextedCredentials)
 	if result != nil {
 		response.Header().Add("content-type", "application/json")
@@ -94,7 +94,7 @@ func SignUpHandler(response http.ResponseWriter, request *http.Request) {
 	defer cancel()
 	client = utils.ConnectDB()
 	defer client.Disconnect(ctx)
-	userCollection := client.Database("test_db").Collection("users")
+	userCollection := client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("users")
 	result, _ := userCollection.InsertOne(ctx, credentials)
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)
@@ -120,7 +120,7 @@ func AddMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 	response.Header().Add("content-type", "application/json")
 	var movie model.Movie
 	json.NewDecoder(request.Body).Decode(&movie)
-	movieCollection := client.Database("test_db").Collection("movies")
+	movieCollection := client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("movies")
 	defer cancel()
 	result, _ := movieCollection.InsertOne(ctx, movie)
 	json.NewEncoder(response).Encode(result)
@@ -141,7 +141,7 @@ func DeleteMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 	client = utils.ConnectDB()
 	defer client.Disconnect(ctx)
 	response.Header().Add("content-type", "application/json")
-	movieCollection := client.Database("test_db").Collection("movies")
+	movieCollection := client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("movies")
 	defer cancel()
 	deletionID := request.FormValue("id")
 	if deletionID == "" {
@@ -171,7 +171,7 @@ func UpdateMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 	response.Header().Add("content-type", "application/json")
 	var movie model.Movie
 	json.NewDecoder(request.Body).Decode(&movie)
-	movieCollection := client.Database("test_db").Collection("movies")
+	movieCollection := client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("movies")
 	defer cancel()
 	updationID := request.FormValue("id")
 	id, _ := primitive.ObjectIDFromHex(updationID)
@@ -201,7 +201,7 @@ func GetMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 	client = utils.ConnectDB()
 	defer client.Disconnect(ctx)
 	response.Header().Add("content-type", "application/json")
-	movieCollection := client.Database("test_db").Collection("movies")
+	movieCollection := client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("movies")
 	allIDs := request.URL.Query()["id"]
 	sortBy := request.FormValue("sortBy")
 	sortOrder := request.FormValue("sortOrder")
