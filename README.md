@@ -33,8 +33,8 @@ You can use the GET, POST, PUT, DELETE methods to make requests to the localhost
 
 While implementing these API's, i got a lot of help from Youtube tutorials and StackOverflow Q/A's
 
-https://www.youtube.com/watch?v=JNr5noDp6EM&t=119s (whole series) : [Nic Raboy]
-https://www.youtube.com/watch?v=hWmR8YtlFlE (JWT implementation with GO) : [Daily Code Buffer]
+https://www.youtube.com/watch?v=JNr5noDp6EM&t=119s (whole series) : [Nic Raboy]\
+https://www.youtube.com/watch?v=hWmR8YtlFlE (JWT implementation with GO) : [Daily Code Buffer]\
 
-https://docs.mongodb.com/manual/reference/method
+https://docs.mongodb.com/manual/reference/method \
 https://golang.org/doc/
