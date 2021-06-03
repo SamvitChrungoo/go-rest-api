@@ -16,14 +16,12 @@ func CheckAuth(request *http.Request) (bool, string, *model.Claims) {
 		}
 		return false, "Bad Request !!", &model.Claims{}
 	}
-
 	tokenStr := cookie.Value
 	claims := &model.Claims{}
 	tkn, err := jwt.ParseWithClaims(tokenStr, claims,
 		func(t *jwt.Token) (interface{}, error) {
 			return model.JwtKey, nil
 		})
-
 	if err != nil {
 		if err == jwt.ErrSignatureInvalid {
 			return false, "Unauthorized Access :( ", &model.Claims{}

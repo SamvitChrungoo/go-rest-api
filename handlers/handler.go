@@ -14,39 +14,43 @@ import (
 	"github.com/go-rest-api/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
-
-var client *mongo.Client
 
 // LoginHandler ->
 func LoginHandler(response http.ResponseWriter, request *http.Request) {
 	var credentials model.Credentials
 	err := json.NewDecoder(request.Body).Decode(&credentials)
 	if err != nil {
+		response.Header().Add("content-type", "application/json")
 		response.WriteHeader(http.StatusBadRequest)
+		errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusBadRequest, Message: "Bad Request :-("})
+		response.Write(errorResponse)
 		return
 	}
-	var expextedCredentials model.Credentials
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client = utils.ConnectDB()
-	defer client.Disconnect(ctx)
-	userCollection := client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("users")
-	result := userCollection.FindOne(ctx, bson.M{"username": credentials.Username}).Decode(&expextedCredentials)
-	if result != nil {
+
+	var expextedCredentials model.Credentials
+	userCollection := utils.Client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("users")
+	result := userCollection.FindOne(ctx, bson.M{"username": credentials.Username})
+	decodeError := result.Decode(&expextedCredentials)
+	if decodeError != nil {
 		response.Header().Add("content-type", "application/json")
 		errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusInternalServerError, Message: "No user found :-("})
 		response.WriteHeader(http.StatusUnauthorized)
 		response.Write(errorResponse)
+		return
 	}
+
 	if credentials.Password != expextedCredentials.Password {
 		response.Header().Add("content-type", "application/json")
-		errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusUnauthorized, Message: "UnAuthorized Acess :-("})
+		errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusUnauthorized, Message: "Unauthorized Access - incorrect password :-("})
 		response.WriteHeader(http.StatusUnauthorized)
 		response.Write(errorResponse)
 		return
 	}
+
 	expirationTime := time.Now().Add(time.Minute * 10)
 	claims := &model.Claims{
 		Username: credentials.Username,
@@ -55,12 +59,14 @@ func LoginHandler(response http.ResponseWriter, request *http.Request) {
 		}}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(model.JwtKey)
+
 	http.SetCookie(response,
 		&http.Cookie{
 			Name:    "token",
 			Value:   tokenString,
 			Expires: expirationTime,
 		})
+
 	response.Header().Add("content-type", "application/json")
 	successResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusOK, Message: "Logged in successfully :-) "})
 	response.WriteHeader(http.StatusOK)
@@ -87,14 +93,17 @@ func SignUpHandler(response http.ResponseWriter, request *http.Request) {
 	var credentials model.Credentials
 	err := json.NewDecoder(request.Body).Decode(&credentials)
 	if err != nil {
+		response.Header().Add("content-type", "application/json")
 		response.WriteHeader(http.StatusBadRequest)
+		errorResponse, _ := json.Marshal(model.ErrorResponse{Code: http.StatusBadRequest, Message: "Bad Request :-("})
+		response.Write(errorResponse)
 		return
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client = utils.ConnectDB()
-	defer client.Disconnect(ctx)
-	userCollection := client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("users")
+
+	userCollection := utils.Client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("users")
 	result, _ := userCollection.InsertOne(ctx, credentials)
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)
@@ -113,15 +122,14 @@ func AddMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 		response.Write(errorResponse)
 		return
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client = utils.ConnectDB()
-	defer client.Disconnect(ctx)
+
 	response.Header().Add("content-type", "application/json")
 	var movie model.Movie
 	json.NewDecoder(request.Body).Decode(&movie)
-	movieCollection := client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("movies")
-	defer cancel()
+	movieCollection := utils.Client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("movies")
 	result, _ := movieCollection.InsertOne(ctx, movie)
 	json.NewEncoder(response).Encode(result)
 }
@@ -136,13 +144,12 @@ func DeleteMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 		response.Write(errorResponse)
 		return
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client = utils.ConnectDB()
-	defer client.Disconnect(ctx)
+
 	response.Header().Add("content-type", "application/json")
-	movieCollection := client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("movies")
-	defer cancel()
+	movieCollection := utils.Client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("movies")
 	deletionID := request.FormValue("id")
 	if deletionID == "" {
 		response.WriteHeader(http.StatusInternalServerError)
@@ -164,15 +171,14 @@ func UpdateMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 		response.Write(errorResponse)
 		return
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client = utils.ConnectDB()
-	defer client.Disconnect(ctx)
+
 	response.Header().Add("content-type", "application/json")
 	var movie model.Movie
 	json.NewDecoder(request.Body).Decode(&movie)
-	movieCollection := client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("movies")
-	defer cancel()
+	movieCollection := utils.Client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("movies")
 	updationID := request.FormValue("id")
 	id, _ := primitive.ObjectIDFromHex(updationID)
 	update := bson.M{"$set": bson.M{
@@ -198,10 +204,9 @@ func GetMovieEndpoint(response http.ResponseWriter, request *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client = utils.ConnectDB()
-	defer client.Disconnect(ctx)
+
 	response.Header().Add("content-type", "application/json")
-	movieCollection := client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("movies")
+	movieCollection := utils.Client.Database(utils.GetEnvironmentVariable("DB_NAME")).Collection("movies")
 	allIDs := request.URL.Query()["id"]
 	sortBy := request.FormValue("sortBy")
 	sortOrder := request.FormValue("sortOrder")

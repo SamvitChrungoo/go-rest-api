@@ -11,6 +11,8 @@ import (
 
 func main() {
 	utils.SetEnvironmentVariables()
+	utils.ConnectDB()
+	defer close()
 	router := mux.NewRouter()
 	router.HandleFunc("/login", handler.LoginHandler).Methods("POST")
 	router.HandleFunc("/logout", handler.LogOutHandler).Methods("GET")
@@ -21,4 +23,9 @@ func main() {
 	router.HandleFunc("/movies", handler.GetMovieEndpoint).Methods("GET")
 	portNo := utils.GetEnvironmentVariable("PORT_NO")
 	http.ListenAndServe(":"+portNo, router)
+}
+
+func close() {
+	utils.UnsetEnvironmentVariables()
+	utils.DisconnectDB()
 }

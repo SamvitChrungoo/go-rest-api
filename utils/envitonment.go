@@ -15,3 +15,11 @@ func SetEnvironmentVariables() {
 func GetEnvironmentVariable(key string) string {
 	return os.Getenv(key)
 }
+
+//UnsetEnvironmentVariables ->  for unsetting ENV variable
+func UnsetEnvironmentVariables() {
+	os.Unsetenv("JWT_SECRET_PHASE")
+	os.Unsetenv("PORT_NO")
+	os.Unsetenv("DB_PASSWORD")
+	os.Unsetenv("DB_NAME")
+}
